@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Konfigurasi Kamera</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header>
+        <h1>Konfigurasi Kamera</h1>
+    </header>
+    <div class="sidebar">
+        <a href="PageUtama.html">Camera</a>
+        <a href="History.html">
+            History
+            <span class="notification"></span>
+        </a>
+        <a href="about.html">About</a>
+    </div>
+
+    <div style="display: flex; flex-direction: column; align-items: center; margin-top: 100px;">
+        <button type="button" onclick="toggleForm('add')" style="margin-bottom: 10px;">Tambah Kamera</button>
+        <button type="button" onclick="toggleForm('delete')">Hapus Kamera</button>
+
+    <form id="updateDatabase">
+        <p>Tambah Kamera</p>
+        <div>
+            <label for="AddName">Nama Kamera:</label>
+            <input type="text" id="AddName" name="AddName" required>
+        </div>
+        <div>
+            <label for="Lokasi">Lokasi Kamera</label>
+            <input type="text" id="Lokasi" name="Lokasi" required>
+        </div>
+        <div>
+            <label for="AddIP">IP Kamera</label>
+            <input type="text" id="AddIP" name="AddIP" required>
+        </div>
+        <div><button type="button" onclick="addKamera()">Add Kamera</button></div>        
+    </form>
+
+    <form id="HapusDatabase">
+        <p>Hapus Kamera</p>
+        <div>
+            <label for="DeleteLokasi">Lokasi Kamera yang akan dihapus:</label>
+            <input type="text" id="DeleteLokasi" name="DeleteLokasi" required>
+            <button type="button" onclick="deleteKamera()">Hapus Kamera</button>
+        </div>
+    </form>
+
+    <script>
+        function toggleForm(type) {
+            const addForm = document.getElementById('updateDatabase');
+            const deleteForm = document.getElementById('HapusDatabase');
+
+            if (type === 'add') {
+                addForm.style.display = 'block';
+                deleteForm.style.display = 'none';
+            } else if (type === 'delete') {
+                addForm.style.display = 'none';
+                deleteForm.style.display = 'block';
+            }
+        }
+
+        async function addKamera() {
+            const addNameInput = document.getElementById('AddName');
+            const lokasiInput = document.getElementById('Lokasi');
+            const addIPInput = document.getElementById('AddIP');
+
+            // Check if any of the fields are empty
+            if (!addNameInput.value || !lokasiInput.value || !addIPInput.value) {
+                window.alert('All fields must be filled');
+                return;
+            }
+
+            // Retrieve the values from the input fields
+            const newUrl = addIPInput.value;
+            const newName = addNameInput.value;
+            const newLocation = lokasiInput.value;
+
+            // Create the data object for the POST request
+            const newData = {
+                url: newUrl,
+                nama_kamera: newName,
+                lokasi: newLocation
+            };
+
+            // Make the POST request to the specified URL
+            try {
+                const response = await fetch('https://protel-api.vercel.app/api/add-kamera', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(newData),
+                });
+
+                // Check if the request was successful (HTTP status code 200)
+                if (response.ok) {
+                    addNameInput.value = '';
+                    lokasiInput.value = '';
+                    addIPInput.value = '';
+                    console.log('Camera added successfully');
+                    window.alert('Kamera berhasil ditambahkan');
+                } else {
+                    console.error('Failed to add camera:', response.statusText);
+                    window.alert('Kamera gagal ditambahkan');
+                }
+            } catch (error) {
+                console.error('Error adding camera:', error);
+                window.alert('Kamera gagal ditambahkan');
+            }
+        }
+
+        async function deleteKamera() {
+            try {
+                // Retrieve the value from the DeleteLokasi input field
+                const deleteLokasi = document.getElementById('DeleteLokasi').value;
+
+                // Fetch the data to find the matching ID
+                const response = await fetch('https://protel-api.vercel.app/api/url', {
+                    // Add any necessary headers or options here
+                });
+
+                if (response.ok) {
+                    const responseData = await response.json();
+                    console.log('Fetched Camera Data:', responseData);
+
+                    // Check if the response contains 'data' array
+                    if (Array.isArray(responseData.data)) {
+                        // Find the camera object with the matching 'lokasi'
+                        const matchingCamera = responseData.data.find(camera => camera.lokasi === deleteLokasi);
+
+                        if (matchingCamera) {
+                            // Extract the 'id_kamera' from the matching camera
+                            const matchingIdKamera = matchingCamera.id_kamera;
+
+                            // Perform the delete operation based on the matched 'id_kamera'
+                            console.log('Matching id_kamera found:', matchingIdKamera);
+
+                            // Send the DELETE request to the specified endpoint
+                            const deleteResponse = await fetch(`https://protel-api.vercel.app/api/hapus-kamera/${matchingIdKamera}`, {
+                                method: 'DELETE',
+                            });
+
+                            // Check if the DELETE request was successful
+                            if (deleteResponse.ok) {
+                                document.getElementById('DeleteLokasi').value = '';
+                                console.log('Camera deleted successfully');
+                                window.alert('Kamera dihapus');
+                            } else {
+                                console.error('Failed to delete camera:', deleteResponse.statusText);
+                                window.alert('Kamera gagal dihapus');
+                            }
+                        } else {
+                            console.error('No matching camera found for the entered Lokasi:', deleteLokasi);
+                            window.alert('Kamera tidak ditemukan');
+                        }
+                    } else {
+                        console.error('Invalid data format. Expected an array under "data".');
+                        window.alert('Kamera gagal dihapus');
+                    }
+                } else {
+                    console.error('Failed to fetch camera data:', response.statusText);
+                    window.alert('Kamera gagal dihapus');
+                }
+            } catch (error) {
+                console.error('Error deleting camera:', error);
+            }
+        }
+
+        // ####### Notifikasi Start
+        let previousData = null; // Penting buat notifikasi
+        async function fetchDataAndNotify() {
+            try {
+                const response = await fetch('https://protel-api.vercel.app/api/get-kecelakaan');
+                const data = await response.json();
+                if (isNewEntry(data)) {
+                    console.log("Notify");
+                    playAudio();
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        function isNewEntry(newData) {
+            if (previousData === null) {
+                // If previousData is null, it's the initial load, so no need to notify
+                previousData = newData;
+                return false;
+            }
+
+            const newDataString = JSON.stringify(newData);
+            if (newDataString !== JSON.stringify(previousData)) {
+                previousData = newData;
+                return true;
+            }
+            return false;
+        }
+
+        function playAudio() {
+            const audio = new Audio('mixkit-alert-quick-chime-766.wav');
+            audio.play();
+        }
+
+        // Fetch data and trigger notification every 5 seconds
+        setInterval(fetchDataAndNotify, 5000);
+
+        // ####### Notifikasi END
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DALAN - Accidents Log</title>
+    <script src="https://kit.fontawesome.com/7d610b6e7a.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <h1>DALAN - Accidents Log</h1>
+    </header>
+
+    <div class="sidebar">
+        <a href="PageUtama.html"><i class="fa-solid fa-video"></i> Cameras</a>
+        <a href="History.html"><i class="fa-regular fa-calendar-days"></i>
+             History
+            <span class="notification"></span>
+        </a>
+        <a href="about.html"><i class="fa-solid fa-address-card"></i> About</a>
+    </div>
+
+    <main id="text-container">
+        <!-- Text from the backend will be displayed here -->
+    </main>
+
+    <script>
+        let previousData = null;
+
+        function fetchDataAndDisplay() {
+            fetch('https://protel-api.vercel.app/api/get-kecelakaan')
+                .then(response => response.json())
+                .then(data => displayText(data))
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        function displayText(response) {
+            console.log('Fetched Response:', response);
+
+            if (response && response.error === false && Array.isArray(response.data)) {
+                const textContainer = document.getElementById('text-container');
+                const contentArray = response.data.map(entry => {
+                    const imageElement = entry.link_file_supabase
+                        ? `<img src="${entry.link_file_supabase}" alt="Accident Image" style="max-width: 100%;">`
+                        : '';
+
+                    return {
+                        html: `<div>
+                                    <p>ID: ${entry.id_kecelakaan}</p>
+                                    <p>Time: ${entry.waktu_kecelakaan}</p>
+                                    <p>Location: ${entry.lokasi}</p>
+                                    <p>Description: ${entry.deskripsi}</p>
+                                    ${imageElement}
+                                </div>`,
+                        timestamp: new Date(entry.waktu_kecelakaan).getTime(), // Convert time to timestamp
+                    };
+                });
+
+                // Sort the entries by timestamp in descending order
+                const sortedContentArray = contentArray.sort((a, b) => b.timestamp - a.timestamp);
+
+                const textToShow = sortedContentArray.map(entry => entry.html).join('\n');
+                textContainer.innerHTML = textToShow;
+            } else {
+                console.error('Invalid or missing data in the response');
+            }
+        }
+
+        function fetchDataAlert() {
+            fetch('https://protel-api.vercel.app/api/get-kecelakaan')
+                .then(response => response.json())
+                .then(data => {
+                    if (isNewData(data)) {
+                        playAlertSound();
+                    }
+                    displayText(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        function isNewData(newData) {
+            // Compare the fetched data with the previous data
+            const newDataString = JSON.stringify(newData);
+            if (newDataString !== JSON.stringify(previousData)) {
+                previousData = newData;
+                return true;
+            }
+            return false;
+        }
+
+        // Polling every 5 seconds (adjust as needed)
+        setInterval(fetchDataAndDisplay, 5000);
+
+        // Initial fetch on page load
+        document.addEventListener('DOMContentLoaded', fetchDataAndDisplay);
+
+        async function fetchDataAndNotify() {
+            try {
+                const response = await fetch('https://protel-api.vercel.app/api/get-kecelakaan');
+                const data = await response.json();
+
+                console.log('Data:', data);
+
+                if (isNewEntry(data)) {
+                    console.log("Notify");
+                    playAudio();
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        function isNewEntry(newData) {
+            const newDataString = JSON.stringify(newData);
+            if (newDataString !== JSON.stringify(previousData)) {
+                previousData = newData;
+                return true;
+            }
+            return false;
+        }
+
+        // Function to play the audio
+        function playAudio() {
+            const audio = new Audio('mixkit-alert-quick-chime-766.wav');
+            audio.play();
+        }
+
+        // Fetch data and trigger notification every 5 seconds
+        setInterval(fetchDataAndNotify, 5000);
+
+        // Initial fetch on page load
+        document.addEventListener('DOMContentLoaded', fetchDataAndNotify);
+    </script>
+</body>
+</html>
